@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Typing Speed Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Typing Speed Test</h1>
+        <p>Time left: <span id="timer">60</span> seconds</p>
+        <p>Current word: <span id="current-word">{{ current_word }}</span></p>
+        <input type="text" id="typed-word" autofocus autocomplete="off">
+    </div>
+    <script>
+        $(document).ready(function() {
+            var timer = 60;
+            var countdown;
+
+            function startTimer() {
+                countdown = setInterval(function() {
+                    timer--;
+                    if (timer >= 0) {
+                        $("#timer").text(timer);
+                    } else {
+                        clearInterval(countdown);
+                        $("#typed-word").prop("disabled", true);
+                        $.ajax({
+                            url: "/stop",
+                            method: "POST",
+                            success: function(response) {
+                                var wpm = response.wpm;
+                                alert("Time's up!\n\nYou typed " + wpm + " words per minute!");
+                            }
+                        });
+                    }
+                }, 1000);
+            }
+
+            function checkWord(typedWord) {
+                $.ajax({
+                    url: "/check",
+                    method: "POST",
+                    data: { typed_word: typedWord },
+                    success: function(response) {
+                        if (response.correct) {
+                            $("#typed-word").val("");
+                            $.ajax({
+                                url: "/",
+                                method: "GET",
+                                success: function(data) {
+                                    $("#current-word").html($(data).find("#current-word").html());
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            $("#typed-word").on("input", function() {
+                var typedWord = $(this).val();
+                checkWord(typedWord);
+            });
+
+            $.ajax({
+                url: "/start",
+                method: "POST",
+                success: function() {
+                    $("#typed-word").prop("disabled", false).focus();
+                    startTimer();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
